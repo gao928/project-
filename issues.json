@@ -1,0 +1,61 @@
+[
+  {
+    "id": 1,
+    "title": "地图切换后 UI 不更新问题",
+    "description": "切换地图下拉框时，顶部预览区域的地图名未刷新",
+    "status": "resolved",
+    "resolution": "已删除",
+    "priority": "low",
+    "createdAt": "2026-6-13"
+  },
+  {
+    "id": 2,
+    "title": "地图切换问题",
+    "description": "地图切换有时候不成功，会显示超时和后端未连接",
+    "status": "open",
+    "priority": "high",
+    "createdAt": "2026-6-13"
+  },
+  {
+    "id": 3,
+    "title": "数据采集问题",
+    "description": "预先设置要采集300帧数据，但是实际却比300帧要多或者少",
+    "status": "open",
+    "priority": "high",
+    "createdAt": "2026-6-13"
+  },
+  {
+    "id": 4,
+    "title": "后端路径查找问题",
+    "description": "当前采用硬编码，但是用户环境和开发环境不同，程序无法找到配置",
+    "status": "resolved",
+    "resolution": "已设置成让用户自己设置",
+    "priority": "high",
+    "createdAt": "2026-6-13"
+  },
+  {
+    "id": 5,
+    "title": "强行终止采集进程问题",
+    "description": "有时候参数调错了但已经点击了采集，希望重新采集需要等待采集完成",
+    "status": "open",
+    "priority": "low",
+    "createdAt": "2026-6-26"
+  },
+  {
+    "id":6,
+    "title": "ui融合",
+    "description": "预计将数据资产页删除，将内容移动到数据采集页的右边框，生成数据集之上",
+    "status": "open",
+    "priority": "low",
+    "createdAt": "2026-7-2"
+  },
+    {
+    "id":7,
+    "title": "rgb图颜色异常",
+    "description": "颜色和ue4窗口的颜色不一致",
+    "status": "resolved",
+    "resolution": "原因是颜色通道顺序设置错误，把原本的R,G,B设置成了B,G,R。已修改顺序。",
+    "priority": "high",
+    "createdAt": "2026-7-3"
+  }
+]

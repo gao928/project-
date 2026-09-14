@@ -1,0 +1,2223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Drone Dataset Platform · 无人机数据集生成平台</title>
+    <style>
+        /* ============================================================
+           1. 全局重置 & 基础变量
+           ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Roboto', sans-serif;
+            background: #f5f7fc;
+            color: #1e293b;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ============================================================
+           2. 布局（侧边栏 + 主内容）
+           ============================================================ */
+        .app-layout {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 140px;
+            flex-shrink: 0;
+            background: #ffffff;
+            border-right: 1px solid #eef2f9;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 12px;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .nav-item {
+            padding: 14px 8px;
+            text-align: center;
+            font-size: 15px;
+            font-weight: 500;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #475569;
+            background: transparent;
+        }
+        .nav-item:hover:not(.active) {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .nav-item.active {
+            background: #3b82f6;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            scrollbar-width: thin;
+        }
+
+        .page-container {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .page-container.active-page {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(4px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ============================================================
+           3. 通用组件（卡片、按钮、下拉、输入等）
+           ============================================================ */
+        .generic-card,
+        .unified-weather-card,
+        .sensor-card,
+        .traffic-card {
+            background: #ffffff;
+            border-radius: 28px;
+            padding: 16px 18px;
+            border: 1px solid #eef2f9;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .select-dropdown {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 20px;
+            border: 1.5px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1e293b;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .select-dropdown:hover {
+            border-color: #3b82f6;
+        }
+
+        .quality-option {
+            flex: 1;
+            text-align: center;
+            padding: 8px 0;
+            border-radius: 40px;
+            background: #f1f5f9;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .quality-option.active {
+            background: #3b82f6 !important;
+            color: white !important;
+        }
+
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: #cbd5e1;
+            border-radius: 40px;
+            position: relative;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .toggle-switch.active {
+            background: #3b82f6;
+        }
+        .toggle-switch::after {
+            content: "";
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            transition: 0.2s;
+        }
+        .toggle-switch.active::after {
+            left: 21px;
+        }
+
+        .num-input-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8fafc;
+            padding: 8px 14px;
+            border-radius: 48px;
+            margin-bottom: 12px;
+        }
+        .num-input-group label {
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .num-input-group input {
+            width: 100px;
+            border: 1px solid #cbd5e1;
+            border-radius: 40px;
+            padding: 6px 12px;
+            text-align: center;
+            background: white;
+        }
+
+        .note-static {
+            font-size: 10px;
+            color: #6c86a3;
+            margin-top: 14px;
+            background: #f1f5f9;
+            padding: 8px;
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 16px;
+            color: white;
+            cursor: pointer;
+        }
+        .btn-launch {
+            flex: 2;
+            background: #10b981;
+            border: none;
+            border-radius: 48px;
+            padding: 12px 0;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-stop {
+            flex: 1;
+            background: #ef4444;
+            border: none;
+            border-radius: 48px;
+            padding: 12px 0;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-generate {
+            background: linear-gradient(105deg, #2563eb, #1e40af);
+            border: none;
+            padding: 12px 32px;
+            border-radius: 48px;
+            font-weight: 600;
+            font-size: 16px;
+            color: white;
+            cursor: pointer;
+            margin-top: 28px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        /* ============================================================
+           4. 静态天气
+           ============================================================ */
+        .unified-weather-card {
+            min-height: 270px;
+            display: flex;
+            flex-direction: column;
+        }
+        .weather-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .mode-switch-container {
+            background: #f1f5f9;
+            border-radius: 48px;
+            padding: 4px;
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+        }
+        .mode-btn {
+            flex: 1;
+            text-align: center;
+            padding: 10px 12px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            background: transparent;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+        .mode-btn.active {
+            background: #ffffff;
+            color: #1e40af;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .weather-preset-area {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+        }
+        .preset-card {
+            background: #f8fafc;
+            border-radius: 18px;
+            padding: 10px 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1.5px solid transparent;
+        }
+        .preset-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .preset-card.selected {
+            background: #eef4ff;
+            border-color: #3b82f6;
+        }
+        .preset-icon {
+            font-size: 28px;
+            margin-bottom: 4px;
+        }
+
+        .pro-params-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .param-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .param-label {
+            width: 100px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #2c3e66;
+        }
+        .param-row input[type="range"] {
+            flex: 1;
+            height: 4px;
+            cursor: pointer;
+        }
+        .param-value {
+            width: 38px;
+            font-size: 11px;
+            font-family: monospace;
+            text-align: right;
+            color: #2563eb;
+            font-weight: 500;
+        }
+
+        /* ============================================================
+           5. 动态天气（三栏编辑器）
+           ============================================================ */
+        .dynamic-weather-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 560px;
+            background: #0f172a;
+            border-radius: 28px;
+            overflow: hidden;
+            border: 1px solid #1e293b;
+            margin-top: 4px;
+        }
+
+        .dw-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: #1e293b;
+            border-bottom: 1px solid #2d3a4f;
+            flex-shrink: 0;
+        }
+        .dw-toolbar-left { display: flex; align-items: center; gap: 16px; }
+        .dw-title { font-weight: 700; font-size: 15px; color: #f1f5f9; }
+        .dw-duration { font-size: 13px; color: #94a3b8; }
+        .dw-duration strong { color: #f1f5f9; font-weight: 600; }
+        .dw-toolbar-right { display: flex; align-items: center; gap: 12px; }
+        .dw-mode-toggle {
+            display: flex;
+            background: #0f172a;
+            border-radius: 40px;
+            padding: 2px;
+        }
+        .dw-mode-btn {
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #94a3b8;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            transition: 0.2s;
+        }
+        .dw-mode-btn.active {
+            background: #334155;
+            color: #f1f5f9;
+        }
+        .dw-mode-btn:hover:not(.active) { color: #e2e8f0; }
+        .dw-time-display {
+            font-family: monospace;
+            font-size: 13px;
+            color: #94a3b8;
+            background: #0f172a;
+            padding: 2px 12px;
+            border-radius: 40px;
+        }
+        .dw-btn-preview {
+            background: #3b82f6;
+            border: none;
+            padding: 4px 20px;
+            border-radius: 40px;
+            color: white;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .dw-btn-preview:hover { opacity: 0.85; }
+
+        .dw-body { display: flex; flex: 1; overflow: hidden; }
+
+        .dw-left-panel {
+            width: 160px;
+            flex-shrink: 0;
+            background: #1e293b;
+            padding: 12px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            border-right: 1px solid #2d3a4f;
+        }
+        .dw-panel-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            padding: 4px 8px 12px 8px;
+            border-bottom: 1px solid #334155;
+        }
+        .dw-track-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .dw-track-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: 10px;
+            gap: 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: background 0.15s;
+        }
+        .dw-track-item:hover { background: #2d3748; }
+        .dw-track-item.active {
+            background: #2d3748;
+            border-color: #475569;
+        }
+        .dw-track-color {
+            width: 4px;
+            height: 24px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .dw-track-name {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            color: #e2e8f0;
+        }
+        .dw-track-vis {
+            opacity: 0.3;
+            font-size: 12px;
+            cursor: pointer;
+            user-select: none;
+            transition: opacity 0.2s;
+        }
+        .dw-track-vis.on { opacity: 1; color: #3b82f6; }
+        .dw-track-vis:hover { opacity: 0.7; }
+        .dw-track-vis.on:hover { opacity: 0.8; }
+        .dw-add-track {
+            margin-top: auto;
+            border-top: 1px solid #334155;
+            padding-top: 12px;
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .dw-add-track:hover { opacity: 1; color: #94a3b8; }
+
+        .dw-center-panel {
+            flex: 1;
+            background: #1e293b;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .dw-timeline-ruler {
+            height: 32px;
+            background: #162032;
+            border-bottom: 1px solid #2d3a4f;
+            padding: 0 16px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .dw-ruler-mark {
+            position: absolute;
+            font-size: 9px;
+            color: #64748b;
+            transform: translateX(-50%);
+            bottom: 4px;
+        }
+        .dw-ruler-tick {
+            position: absolute;
+            width: 1px;
+            height: 6px;
+            background: #334155;
+            bottom: 16px;
+            transform: translateX(-50%);
+        }
+        .dw-canvas-wrapper {
+            flex: 1;
+            margin: 8px 16px 16px 16px;
+            border-radius: 8px;
+            background: #0a0f1a;
+            overflow: hidden;
+            position: relative;
+        }
+        .dw-canvas-wrapper svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .dw-grid-line {
+            stroke: #1e293b;
+            stroke-width: 1;
+            stroke-dasharray: 4 4;
+        }
+        .dw-grid-solid {
+            stroke: #2d3a4f;
+            stroke-width: 1;
+        }
+        .dw-curve {
+            fill: none;
+            stroke-width: 2.5;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+        .dw-anchor { cursor: pointer; }
+        .dw-anchor text {
+            font-size: 8px;
+            fill: #94a3b8;
+            text-anchor: middle;
+        }
+        .dw-handle-line {
+            stroke: #64748b;
+            stroke-width: 1.5;
+            stroke-dasharray: 4 4;
+            opacity: 0.5;
+        }
+        .dw-handle-point {
+            fill: #94a3b8;
+            stroke: #1e293b;
+            stroke-width: 1.5;
+        }
+        .dw-cursor-line {
+            stroke: #ef4444;
+            stroke-width: 1.5;
+            stroke-dasharray: 3 3;
+        }
+        .dw-cursor-dot { fill: #ef4444; }
+
+        .dw-timeline-footer {
+            height: 30px;
+            background: #162032;
+            border-top: 1px solid #2d3a4f;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-shrink: 0;
+            font-size: 11px;
+            color: #64748b;
+        }
+        .dw-tag {
+            background: #2d3a4f;
+            padding: 0 10px;
+            border-radius: 4px;
+            color: #94a3b8;
+        }
+
+        .dw-right-panel {
+            width: 290px;
+            flex-shrink: 0;
+            background: #162032;
+            padding: 16px 18px;
+            overflow-y: auto;
+            border-left: 1px solid #2d3a4f;
+        }
+        .dw-right-panel::-webkit-scrollbar { width: 4px; }
+        .dw-right-panel::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .dw-property-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .dw-prop-group {
+            border-bottom: 1px solid #2d3a4f;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+        }
+        .dw-prop-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .dw-prop-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #64748b;
+            margin-bottom: 12px;
+        }
+        .dw-param {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .dw-param label {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .dw-param .val {
+            font-size: 12px;
+            font-weight: 500;
+            color: #f1f5f9;
+            background: #0f172a;
+            padding: 2px 12px;
+            border-radius: 40px;
+            font-family: monospace;
+            min-width: 48px;
+            text-align: center;
+        }
+        .dw-param select {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+        }
+        .dw-param select:hover { border-color: #475569; }
+        .dw-param input[type="range"] {
+            width: 120px;
+            height: 3px;
+            background: #334155;
+            border-radius: 4px;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        .dw-param input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        .dw-param input[type="range"]::-moz-range-thumb {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #3b82f6;
+            border: none;
+            cursor: pointer;
+        }
+        .dw-badge {
+            display: inline-block;
+            padding: 2px 14px;
+            border-radius: 40px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #2d3a4f;
+            color: #94a3b8;
+        }
+        .dw-badge.c0 { background: #1e3a5f; color: #60a5fa; }
+        .dw-badge.c1 { background: #3b2e1e; color: #fbbf24; }
+        .dw-badge.c2 { background: #1e3a2a; color: #34d399; }
+
+        .dw-sun {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #0f172a;
+            padding: 8px 14px;
+            border-radius: 12px;
+            margin-top: 4px;
+        }
+        .dw-sun-circle {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 2px solid #334155;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .dw-sun-dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fbbf24;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 24px rgba(251,191,36,0.4);
+        }
+        .dw-sun-ray {
+            position: absolute;
+            width: 2px;
+            height: 22px;
+            background: #fbbf24;
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%) rotate(35deg);
+            transform-origin: bottom center;
+            border-radius: 2px;
+        }
+        .dw-sun-info {
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+        .dw-sun-info strong { color: #f1f5f9; font-weight: 600; }
+
+        .dw-minimap {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-top: 6px;
+        }
+        .dw-minimap .row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .dw-minimap .row .bar {
+            flex: 1;
+            height: 4px;
+            background: #2d3a4f;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .dw-minimap .row .bar .fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        }
+        .dw-minimap .row .bar .fill.orange {
+            background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        }
+
+        .dw-pill-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .dw-pill {
+            background: #2d3a4f;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: 0.15s;
+            border: 1px solid transparent;
+        }
+        .dw-pill:hover { background: #3d4a5f; }
+        .dw-pill.active {
+            background: #3b82f6;
+            color: #fff;
+            border-color: #3b82f6;
+        }
+
+        /* ============================================================
+           6. 采集控制（地图、巡航、传感器、交通、采集配置）
+           ============================================================ */
+        /* 巡航控制 */
+        .cruise-input-group {
+            display: flex;
+            gap: 16px;
+        }
+        .cruise-input-group .cruise-field {
+            flex: 1;
+        }
+        .cruise-input-group label {
+            font-size: 12px;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 4px;
+            color: #64748b;
+        }
+        .cruise-input-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            color: #1e293b;
+        }
+        .cruise-input-group input:focus {
+            border-color: #3b82f6;
+        }
+
+        /* 传感器套件 */
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .sensor-config-card {
+            background: #f8fafc;
+            border-radius: 20px;
+            border: 1px solid #eef2f9;
+            overflow: hidden;
+            transition: 0.2s;
+        }
+        .sensor-config-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            cursor: pointer;
+            background: #ffffff;
+            border-bottom: 1px solid #eef2f9;
+        }
+        .sensor-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+        .sensor-badge {
+            font-size: 9px;
+            padding: 2px 8px;
+            border-radius: 40px;
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .sensor-badge.carla {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .sensor-badge.airsim {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .sensor-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .switch {
+            width: 36px;
+            height: 20px;
+            background: #cbd5e1;
+            border-radius: 40px;
+            position: relative;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .switch.active {
+            background: #3b82f6;
+        }
+        .switch::after {
+            content: "";
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            transition: 0.2s;
+        }
+        .switch.active::after {
+            left: 17px;
+        }
+        .expand-btn {
+            background: none;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            color: #64748b;
+        }
+        .sensor-config-content {
+            padding: 12px;
+            display: none;
+            border-top: 1px solid #eef2f9;
+            background: #fefefe;
+        }
+        .param-group {
+            margin-bottom: 14px;
+        }
+        .param-group .param-label {
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #334155;
+        }
+        .param-inputs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 28px;
+        }
+        .input-wrapper span {
+            font-size: 10px;
+            font-weight: 500;
+            color: #475569;
+        }
+        .input-wrapper input {
+            width: 65px;
+            border: none;
+            background: transparent;
+            padding: 5px 0;
+            font-size: 11px;
+            text-align: right;
+            outline: none;
+        }
+
+        /* 交通 */
+        .traffic-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .traffic-label {
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            gap: 8px;
+        }
+
+        /* ============================================================
+           7. 数据资产 & 问题跟踪
+           ============================================================ */
+        .right-panel {
+            background: #ffffff;
+            border-radius: 28px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #eef2f9;
+            height: 100%;
+        }
+        .panel-header {
+            padding: 18px 18px 12px;
+            font-weight: 700;
+            border-bottom: 2px solid #f0f2f8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .dataset-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        .dataset-item {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid #3b82f6;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .dataset-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .dataset-name {
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .dataset-meta {
+            font-size: 10px;
+            color: #5b6e8c;
+            margin-top: 6px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .output-section {
+            padding: 16px;
+            border-top: 1px solid #eef2f9;
+        }
+
+        /* ============================================================
+           8. 预览区 & 状态栏
+           ============================================================ */
+        .preview-area {
+            background: #ffffff;
+            border-radius: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 360px;
+            margin-bottom: 20px;
+            border: 1px solid #eef2f9;
+        }
+        .weather-preview {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        .weather-icon {
+            font-size: 80px;
+            margin-bottom: 12px;
+        }
+        .status-bar {
+            padding: 12px 20px;
+            font-size: 13px;
+            background: #ffffffea;
+            border-radius: 60px;
+            border: 1px solid #eef2f9;
+            font-weight: 500;
+            margin-top: 16px;
+        }
+
+        /* ============================================================
+           9. 通知系统 & 进度条
+           ============================================================ */
+        .notification {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            z-index: 1000;
+            min-width: 200px;
+            max-width: 380px;
+            animation: slideIn 0.3s ease;
+            transition: all 0.3s ease;
+        }
+        .notification .close-btn {
+            margin-left: auto;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 0 4px;
+            line-height: 1;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .notification .close-btn:hover {
+            opacity: 1;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to   { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to   { transform: translateX(100%); opacity: 0; }
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(59,130,246,0.2);
+            z-index: 2000;
+        }
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #1e40af);
+            transition: width 0.3s ease;
+            position: relative;
+        }
+        .progress-bar span {
+            position: fixed;
+            top: 8px;
+            right: 20px;
+            background: #1e293b;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* ============================================================
+           10. 布局辅助（两栏、占位等）
+           ============================================================ */
+        .two-column-layout {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .two-column-layout .left-col {
+            flex: 1.2;
+            min-width: 260px;
+        }
+        .two-column-layout .right-col {
+            flex: 0.9;
+            min-width: 260px;
+        }
+        .placeholder-area {
+            background: #f8fafc;
+            border-radius: 28px;
+            padding: 40px 20px;
+            text-align: center;
+            color: #94a3b8;
+            border: 1px dashed #cbd5e1;
+            min-height: 420px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ============================================================
+           11. 滚动条样式（全局）
+           ============================================================ */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 8px;
+        }
+
+        /* ============================================================
+           12. 让自主参数调控 + 官方预设 左右并排
+           ============================================================ */
+        #page-weather .left-col {
+            display: flex !important;
+            flex-direction: row !important;
+            gap: 16px !important;
+            flex-wrap: wrap !important;
+        }
+
+        /* 自主参数调控 —— 控制左边的宽度 */
+        #expertPanel {
+             flex: 1.3 !important;
+            min-width: 200px !important;
+        }
+
+        /* 官方预设 —— 控制右边的宽度 */
+        #presetPanel {
+            flex: 1 !important;
+            min-width: 180px !important;
+        }
+
+        /* 压缩自主参数调控内部间距 */
+        #expertPanel .param-label {
+            width: 100px !important;
+            font-size: 15px !important;
+        }
+
+        #expertPanel .param-value {
+            width: 30px !important;
+            font-size: 15px !important;
+        }
+
+        #expertPanel .param-row {
+            gap: 4px !important;
+        }
+
+        #expertPanel .pro-params-grid {
+            gap: 4px !important;
+        }
+
+        #expertPanel input[type="range"] {
+            flex: 0.97 !important;
+            min-width: 20px !important;
+            height: 3px !important;
+        }
+
+        /* 压缩官方预设内部间距 */
+        #presetPanel .preset-grid {
+            gap: 4px !important;
+        }
+
+        #presetPanel .preset-card {
+            padding: 4px 2px !important;
+        }
+
+        #presetPanel .preset-icon {
+            font-size: 20px !important;
+        }
+
+        /* ============================================================
+           13. 暗色模式覆盖
+           ============================================================ */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #0f172a;
+                color: #e2e8f0;
+            }
+            .generic-card,
+            .unified-weather-card,
+            .sensor-card,
+            .traffic-card,
+            .right-panel,
+            .preview-area {
+                background: #1e293b !important;
+                border-color: #334155 !important;
+            }
+            .select-dropdown,
+            .number-input,
+            .num-input-group input {
+                background: #0f172a !important;
+                color: #e2e8f0 !important;
+                border-color: #334155 !important;
+            }
+            .preset-card,
+            .sensor-config-card {
+                background: #0f172a !important;
+                border-color: #334155 !important;
+            }
+            .param-value,
+            .dataset-meta {
+                color: #94a3b8 !important;
+            }
+            .nav-item {
+                color: #94a3b8;
+            }
+            .nav-item.active {
+                background: #2563eb;
+                color: white;
+            }
+            .nav-item:hover:not(.active) {
+                background: #334155;
+            }
+            .input-wrapper {
+                background: #0f172a !important;
+            }
+            #cruiseAltitudeInput,
+            #cruiseSpeedInput {
+                background: #0f172a !important;
+                color: #e2e8f0 !important;
+                border-color: #334155 !important;
+            }
+            #cruiseAltitudeInput:focus,
+            #cruiseSpeedInput:focus {
+                border-color: #3b82f6 !important;
+            }
+            /* 动态天气暗色已内嵌，无需额外覆盖 */
+        }
+
+        /* ============================================================
+           14. 响应式适配
+           ============================================================ */
+        @media (max-width: 1100px) {
+            .dw-right-panel { width: 240px; }
+            .dw-left-panel  { width: 140px; }
+        }
+
+        @media (max-width: 860px) {
+            .dw-left-panel  { width: 120px; padding: 8px 6px; }
+            .dw-right-panel { width: 200px; padding: 12px; }
+            .dw-toolbar { flex-wrap: wrap; gap: 8px; }
+            .dw-toolbar-right { flex-wrap: wrap; }
+        }
+
+        @media (max-width: 800px) {
+            .sidebar {
+                width: 100px;
+                padding: 20px 8px;
+            }
+            .nav-item {
+                font-size: 13px;
+                padding: 12px 4px;
+            }
+        }
+        /* ============================================================
+           15. 地图预览与路线规划页面
+           仅作用于新页面，保留原有采集页面布局不变。
+           ============================================================ */
+        .route-page-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 18px;
+        }
+        .route-page-header h1 {
+            color: #0f172a;
+            font-size: 24px;
+            line-height: 1.25;
+            margin-bottom: 6px;
+        }
+        .route-page-header p {
+            color: #64748b;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .route-page-kicker {
+            color: #2563eb;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            margin-bottom: 7px;
+        }
+        .route-page-state {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border: 1px solid #dbe5f2;
+            border-radius: 20px;
+            background: #ffffff;
+            color: #64748b;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .route-page-state::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #94a3b8;
+        }
+        .route-page-state.is-loading::before {
+            background: #f59e0b;
+        }
+        .route-page-state.is-ready::before {
+            background: #10b981;
+        }
+        .route-page-state.is-error::before {
+            background: #ef4444;
+        }
+        .route-planning-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 300px;
+            gap: 18px;
+            align-items: start;
+        }
+        .route-map-panel,
+        .route-editor-panel,
+        .route-status-panel {
+            background: #ffffff;
+            border: 1px solid #eef2f9;
+            border-radius: 28px;
+        }
+        .route-map-panel {
+            min-width: 0;
+            padding: 16px;
+        }
+        .route-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .route-panel-title {
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .route-panel-caption {
+            color: #94a3b8;
+            font-size: 11px;
+            margin-top: 3px;
+        }
+        .route-tool-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .route-tool-button {
+            min-height: 30px;
+            padding: 0 10px;
+            border: 1px solid #dbe5f2;
+            border-radius: 10px;
+            background: #f8fafc;
+            color: #475569;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .route-tool-button:disabled {
+            opacity: .65;
+            cursor: not-allowed;
+        }
+        .route-map-stage {
+            position: relative;
+            min-height: 560px;
+            overflow: hidden;
+            border: 1px solid #dbe5f2;
+            border-radius: 20px;
+            background-color: #eef3f7;
+            background-image:
+                linear-gradient(rgba(148, 163, 184, .18) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, .18) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+        .route-map-stage::before,
+        .route-map-stage::after {
+            content: "";
+            position: absolute;
+            background: rgba(100, 116, 139, .14);
+            pointer-events: none;
+        }
+        .route-map-stage::before {
+            width: 120%;
+            height: 70px;
+            left: -10%;
+            top: 42%;
+            transform: rotate(-17deg);
+        }
+        .route-map-stage::after {
+            width: 62px;
+            height: 120%;
+            left: 57%;
+            top: -10%;
+            transform: rotate(26deg);
+        }
+        .route-map-stage.has-topology::before,
+        .route-map-stage.has-topology::after {
+            opacity: 0;
+        }
+        .route-map-stage.has-topology {
+            cursor: grab;
+        }
+        .route-map-stage.has-topology.is-panning {
+            cursor: grabbing;
+        }
+        .route-map-svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            min-height: 560px;
+        }
+        .route-map-svg polyline {
+            fill: none;
+            stroke: #94a3b8;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            vector-effect: non-scaling-stroke;
+        }
+        .route-map-svg polyline.lane-driving {
+            stroke: #3f6f9f;
+            stroke-width: 2.8;
+        }
+        .route-map-svg polyline.lane-sidewalk,
+        .route-map-svg polyline.lane-shoulder {
+            stroke: #a9b7c6;
+            stroke-width: 1.2;
+        }
+        .route-map-svg polyline.lane-parking,
+        .route-map-svg polyline.lane-biking {
+            stroke: #6f9b8c;
+            stroke-width: 1.6;
+        }
+        .route-map-svg circle {
+            fill: #2563eb;
+            stroke: #ffffff;
+            stroke-width: 2;
+            vector-effect: non-scaling-stroke;
+        }
+        .route-map-svg polyline.road-network {
+            stroke: #9aacbd;
+            stroke-width: 1.6;
+            opacity: .48;
+        }
+        .route-map-svg polyline.cruise-route {
+            stroke: #f59e0b;
+            stroke-width: 4;
+            opacity: .98;
+            filter: drop-shadow(0 0 2px rgba(245, 158, 11, .42));
+            marker-end: url(#route-arrow);
+        }
+        .route-map-svg .route-start-marker {
+            fill: #ef4444;
+            stroke: #ffffff;
+            stroke-width: 2;
+            vector-effect: non-scaling-stroke;
+        }
+        .route-map-svg .route-end-marker {
+            fill: #f59e0b;
+            stroke: #ffffff;
+            stroke-width: 2;
+            vector-effect: non-scaling-stroke;
+        }
+        .route-map-svg .route-marker-label {
+            fill: #f8fafc;
+            /* SVG 会随 viewBox 放大，使用较小的用户坐标字号避免屏幕上过大。 */
+            font-size: 4px;
+            font-weight: 700;
+            letter-spacing: 0;
+            paint-order: stroke;
+            stroke: #172235;
+            stroke-width: 1.2px;
+            stroke-linejoin: round;
+        }
+        .route-map-svg .drone-marker-label {
+            fill: #1d4ed8;
+            font-size: 4px;
+            font-weight: 700;
+            letter-spacing: 0;
+            paint-order: stroke;
+            stroke: #ffffff;
+            stroke-width: 1.2px;
+            stroke-linejoin: round;
+        }
+        .route-map-legend {
+            position: absolute;
+            left: 14px;
+            bottom: 14px;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 8px 10px;
+            border: 1px solid rgba(203, 213, 225, .7);
+            border-radius: 10px;
+            background: rgba(15, 23, 42, .82);
+            color: #dbe5f2;
+            font-size: 11px;
+        }
+        .route-map-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+        .legend-swatch {
+            display: inline-block;
+            width: 18px;
+            height: 0;
+            border-top: 2px solid #9aacbd;
+        }
+        .legend-cruise {
+            border-top-width: 4px;
+            border-color: #f59e0b;
+        }
+        .legend-marker {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border: 1px solid #ffffff;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+        .legend-start {
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 95%, 50% 72%, 21% 95%, 32% 57%, 2% 35%, 39% 35%);
+            border-radius: 0;
+        }
+        .route-map-badge {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            z-index: 1;
+            padding: 6px 9px;
+            border-radius: 9px;
+            background: rgba(255, 255, 255, .9);
+            border: 1px solid rgba(203, 213, 225, .9);
+            color: #64748b;
+            font-size: 11px;
+        }
+        .route-map-coordinates {
+            position: absolute;
+            right: 14px;
+            bottom: 12px;
+            z-index: 1;
+            color: #64748b;
+            font-family: Consolas, monospace;
+            font-size: 10px;
+        }
+        .route-map-empty {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+        }
+        .route-map-empty[hidden] {
+            display: none;
+        }
+        .route-map-empty-inner {
+            max-width: 300px;
+            padding: 22px 24px;
+            border: 1px dashed #b9c8d8;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, .86);
+        }
+        .route-map-empty-title {
+            color: #334155;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .route-map-empty-text {
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .route-editor-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .route-editor-panel,
+        .route-status-panel {
+            padding: 16px;
+        }
+        .route-editor-panel .select-dropdown {
+            margin-top: 10px;
+        }
+        .route-mode-switch {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            padding: 4px;
+            margin-top: 10px;
+            border-radius: 12px;
+            background: #f1f5f9;
+        }
+        .route-mode-option {
+            padding: 8px 6px;
+            border: 0;
+            border-radius: 9px;
+            background: transparent;
+            color: #64748b;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .route-mode-option:disabled {
+            cursor: not-allowed;
+            opacity: .6;
+        }
+        .route-mode-option.active {
+            background: #ffffff;
+            color: #2563eb;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, .08);
+            font-weight: 700;
+        }
+        .route-editor-field {
+            margin-top: 14px;
+        }
+        .route-editor-field label {
+            display: block;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .route-editor-field input {
+            width: 100%;
+            padding: 9px 10px;
+            border: 1px solid #dbe5f2;
+            border-radius: 10px;
+            background: #f8fafc;
+            color: #334155;
+        }
+        .route-point-list {
+            min-height: 118px;
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            background: #f8fafc;
+            color: #94a3b8;
+            font-size: 11px;
+            line-height: 1.6;
+        }
+        .route-status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 7px 0;
+            border-bottom: 1px solid #eef2f9;
+            color: #64748b;
+            font-size: 12px;
+        }
+        .route-status-row:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
+        .route-status-row strong {
+            color: #334155;
+            font-weight: 700;
+        }
+        @media (max-width: 900px) {
+            .route-planning-layout {
+                grid-template-columns: 1fr;
+            }
+            .route-map-stage {
+                min-height: 420px;
+            }
+        }
+        @media (max-width: 560px) {
+            .route-page-header {
+                flex-direction: column;
+            }
+            .route-map-stage {
+                min-height: 340px;
+            }
+            .route-panel-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+            .route-tool-row {
+                justify-content: flex-start;
+            }
+        }
+        @media (prefers-color-scheme: dark) {
+            .route-page-header h1,
+            .route-panel-title,
+            .route-map-empty-title,
+            .route-status-row strong {
+                color: #e2e8f0;
+            }
+            .route-page-header p,
+            .route-panel-caption,
+            .route-map-empty-text,
+            .route-status-row {
+                color: #94a3b8;
+            }
+            .route-page-state,
+            .route-map-panel,
+            .route-editor-panel,
+            .route-status-panel {
+                background: #1e293b;
+                border-color: #334155;
+            }
+            .route-map-stage {
+                background-color: #172235;
+                border-color: #334155;
+            }
+            .route-map-empty-inner,
+            .route-map-badge {
+                background: rgba(15, 23, 42, .88);
+                border-color: #475569;
+            }
+            .route-tool-button,
+            .route-editor-field input,
+            .route-point-list {
+                background: #0f172a;
+                border-color: #334155;
+                color: #cbd5e1;
+            }
+            .route-mode-switch {
+                background: #0f172a;
+            }
+            .route-mode-option.active {
+                background: #1e293b;
+            }
+            .route-status-row {
+                border-color: #334155;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    <!-- ===== 侧边栏导航 ===== -->
+    <div class="sidebar">
+        <div class="nav-item" data-page="page-simulator">🚀仿真器配置</div>
+        <div class="nav-item active" data-page="page-weather">🌤️天气配置</div>
+        <div class="nav-item" data-page="page-collect">📡采集控制</div>
+        <div class="nav-item" data-page="page-route-planning">地图与路线</div>
+        <div class="nav-item" data-page="page-assets">📦数据资产</div>
+        <div class="nav-item" data-page="page-issues">📋问题跟踪</div>
+    </div>
+
+    <div class="main-content">
+        <!-- ==========================================================
+             PAGE: 仿真器配置
+             ========================================================== -->
+        <div id="page-simulator" class="page-container">
+            <div class="generic-card">
+                <div class="section-title"><span>🎮 仿真器配置</span></div>
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:12px; font-weight:500; margin-bottom:6px; display:block;">🎨 画质等级</label>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <div class="quality-option" data-quality="Low">低</div>
+                        <div class="quality-option" data-quality="Medium">中</div>
+                        <div class="quality-option" data-quality="High">高</div>
+                        <div class="quality-option" data-quality="Epic">极致</div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button id="launchCarlaBtn" class="btn-launch">🚀 启动 CARLA-Air</button>
+                    <button id="connectCarlaBtn" class="btn-stop" style="cursor:pointer;">🔗 连接已有仿真器</button>
+                    <button id="stopCarlaBtn" class="btn-stop">⏹️ 停止</button>
+                </div>
+                <div style="margin-top:6px; font-size:10px; color:#94a3b8;">
+                    💡 如果你已经自己启动了 Carla-Air（或它还开着），点「连接已有仿真器」直接附着，不会重启仿真器。
+                </div>
+                <div id="carlaStatus" style="margin-top:12px; font-size:11px; background:#f8fafc; padding:10px; border-radius:24px; text-align:center; color:#64748b;">⚫ 未启动</div>
+
+                <!-- 手动配置 -->
+                <div style="margin-top:16px; border-top:1px solid #eef2f9; padding-top:12px;">
+                    <div style="font-weight:600; margin-bottom:8px;">⚙️ 手动配置（必填）</div>
+                    <div style="margin-bottom:8px;">
+                        <label>Carla-Air 文件夹路径:</label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" id="carlaPathInput" style="flex:1; border-radius:20px; border:1px solid #cbd5e1; padding:6px 12px;" placeholder="例如 D:\Carla-Air">
+                            <button id="browseCarlaPathBtn" style="border-radius:20px; background:#e2e8f0; border:none; padding:6px 16px;">浏览</button>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label>Python 解释器路径 (carlaAir环境):</label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" id="pythonPathInput" style="flex:1; border-radius:20px; border:1px solid #cbd5e1; padding:6px 12px;" placeholder="例如 D:\miniconda3\envs\carlaAir\python.exe">
+                            <button id="browsePythonBtn" style="border-radius:20px; background:#e2e8f0; border:none; padding:6px 16px;">浏览</button>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label>AirSim settings.json 路径:</label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" id="airsimSettingsInput" style="flex:1; border-radius:20px; border:1px solid #cbd5e1; padding:6px 12px;" placeholder="例如 D:\AirSim\settings.json">
+                            <button id="browseAirSimSettingsBtn" style="border-radius:20px; background:#e2e8f0; border:none; padding:6px 16px;">浏览</button>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top:16px; border-top:1px solid #eef2f9; padding-top:12px;">
+                    <button id="saveConfigBtn" class="btn-primary">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==============PAGE: 天气配置================ -->
+        <div id="page-weather" class="page-container active-page">
+            <div class="generic-card" style="padding-bottom:8px;">
+                <div class="section-title"><span>🌤️ 天气配置</span></div>
+                <div class="mode-switch-container" id="weatherModeSwitch">
+                    <div class="mode-btn active" data-mode="static">🌱 静态天气</div>
+                    <div class="mode-btn" data-mode="dynamic">⏳ 动态天气</div>
+                </div>
+            </div>
+
+            <!-- 静态天气 -->
+            <div id="staticWeatherContent">
+                <div class="two-column-layout">
+                    <div class="left-col">
+                        <div class="unified-weather-card" id="expertPanel">
+                            <div class="weather-title"><span>🔧 自主参数调控</span></div>
+                            <div id="expertParamsContainer" class="pro-params-grid"></div>
+                        </div>
+                        <div class="unified-weather-card" id="presetPanel">
+                            <div class="weather-title"><span>📦 官方预设</span></div>
+                            <div id="presetGridContainer" class="weather-preset-area"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 动态天气 -->
+            <div id="dynamicWeatherContent" style="display:none;">
+                <div class="dynamic-weather-container">
+                    <div class="dw-toolbar">
+                        <div class="dw-toolbar-left">
+                            <span class="dw-title">⏳ 时间轴编辑器</span>
+                            <span class="dw-duration">总时长: <strong id="dwDurationDisplay">30.0</strong>s</span>
+                        </div>
+                        <div class="dw-toolbar-right">
+                            <div class="dw-mode-toggle">
+                                <span class="dw-mode-btn active" data-mode="timeline">⏱ 曲线</span>
+                                <span class="dw-mode-btn" data-mode="table">📊 表格</span>
+                            </div>
+                            <span class="dw-time-display" id="dwTimeDisplay">00:00:00 / 00:00:30</span>
+                            <button class="dw-btn-preview" id="dwPreviewBtn">▶ 预览</button>
+                        </div>
+                    </div>
+                    <div class="dw-body">
+                        <div class="dw-left-panel">
+                            <div class="dw-panel-title">📡 参数轨道</div>
+                            <div id="dwTrackList" class="dw-track-list"></div>
+                            <div class="dw-add-track" id="dwAddTrackBtn">+ 添加曲线</div>
+                        </div>
+                        <div class="dw-center-panel">
+                            <div class="dw-timeline-ruler" id="dwRuler"></div>
+                            <div class="dw-canvas-wrapper" id="dwCanvasWrapper">
+                                <svg id="dwSvg" viewBox="0 0 800 320" preserveAspectRatio="xMidYMid meet"></svg>
+                            </div>
+                            <div class="dw-timeline-footer" id="dwFooter">
+                                <span>⏱ 总时长: <span id="dwFooterDuration">30.0</span>s</span>
+                                <span class="dw-tag">FPS: 30</span>
+                                <span>📍 当前光标: <span id="dwCursorTime">0.0</span>s</span>
+                                <span style="margin-left:auto;" id="dwStatusRain">🧊 降雨: 0% | 积水: 0% | 湿度: 0%</span>
+                            </div>
+                        </div>
+                        <div class="dw-right-panel" id="dwRightPanel">
+                            <div class="dw-property-placeholder">点击锚点查看属性</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================PAGE: 采集控制========================== -->
+        <div id="page-collect" class="page-container">
+            <div class="two-column-layout">
+                <div class="left-col">
+                    <!-- 地图 -->
+                    <div class="generic-card">
+                        <div class="section-title"><span>🗺️ 启动地图</span></div>
+                        <select id="carlaStartMap" class="select-dropdown">
+                            <option value="Town01">Town01 乡村</option>
+                            <option value="Town02">Town02 小镇</option>
+                            <option value="Town03">Town03 城市</option>
+                            <option value="Town04">Town04 山区</option>
+                            <option value="Town05">Town05 海滨</option>
+                            <option value="Town10HD" selected>Town10HD 高清城市</option>
+                            <option value="Town01_Opt">Town01_Opt 乡村(优化版)</option>
+                            <option value="Town02_Opt">Town02_Opt 小镇(优化版)</option>
+                            <option value="Town03_Opt">Town03_Opt 城市(优化版)</option>
+                            <option value="Town04_Opt">Town04_Opt 山区(优化版)</option>
+                            <option value="Town05_Opt">Town05_Opt 海滨(优化版)</option>
+                            <option value="Town10HD_Opt">Town10HD_Opt 高清城市(优化版)</option>
+                            <option value="AirSimAssets">AirSimAssets 资产地图</option>
+                            <option value="AnnotationColorLandscape">AnnotationColorLandscape 标注景观</option>
+                        </select>
+                    </div>
+
+                    <!-- 巡航控制 -->
+                    <div class="generic-card">
+                        <div class="section-title"><span>🛸 巡航控制</span></div>
+                        <div class="cruise-input-group">
+                            <div class="cruise-field">
+                                <label>巡航高度 (m)</label>
+                                <input type="number" id="cruiseAltitudeInput" value="45" min="10" max="200" step="1">
+                            </div>
+                            <div class="cruise-field">
+                                <label>巡航速度 (m/s)</label>
+                                <input type="number" id="cruiseSpeedInput" value="8" min="1" max="30" step="0.5">
+                            </div>
+                        </div>
+                        <div style="margin-top:10px; padding:8px 10px; border-left:3px solid #f59e0b; background:#fffbeb; color:#92400e; font-size:12px; line-height:1.5;">
+                            自动巡航期间请勿使用键盘飞行控制按键。检测到飞行控制输入后，系统将退出自动巡航并把控制权交还给用户。
+                        </div>
+                        <div id="collectCruiseRouteHint" style="margin-top:8px; font-size:11px; color:#64748b;">🚁 将沿当前地图固定航线采集</div>
+                    </div>
+
+                    <!-- 传感器套件 -->
+                    <div class="sensor-card">
+                        <div class="sensor-header">
+                            <div class="sensor-title"><span>📡 无人机传感器套件</span></div>
+                            <div style="display:flex; gap:8px;">
+                                <button id="resetSensorsBtn" style="background:#f1f5f9; border:none; border-radius:20px; padding:4px 12px; font-size:11px; cursor:pointer;">重置默认</button>
+                            </div>
+                        </div>
+                        <div id="sensorGrid" class="sensor-grid" style="max-height:500px; overflow-y:auto; padding-right:4px;"></div>
+                    </div>
+
+                    <!-- 动态交通 -->
+                    <div class="traffic-card">
+                        <div class="section-title"><span>🚦 动态交通控制</span></div>
+                        <div class="traffic-row">
+                            <div class="traffic-label"><span>🚗 车辆生成</span></div>
+                            <div class="toggle-switch" id="vehicleToggle"></div>
+                        </div>
+                        <div id="vehicleCountBlock">
+                            <div class="num-input-group">
+                                <label>🚙 车辆数量 (0-50)</label>
+                                <input type="number" id="vehicleCount" min="0" max="50" step="1" value="18">
+                            </div>
+                        </div>
+                        <div class="traffic-row" style="margin-top:4px;">
+                            <div class="traffic-label"><span>🚶 行人生成</span></div>
+                            <div class="toggle-switch" id="pedestrianToggle"></div>
+                        </div>
+                        <div id="pedestrianCountBlock">
+                            <div class="num-input-group">
+                                <label>👥 行人数量 (0-50)</label>
+                                <input type="number" id="pedestrianCount" min="0" max="50" step="1" value="12">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 采集配置 -->
+                    <div class="generic-card">
+                        <div class="section-title"><span>⏱️ 采集配置</span></div>
+                        <div class="num-input-group" style="margin-bottom:16px;">
+                            <label>⏱️ 采集时长</label>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <button id="durationMinusBtn" style="width:32px; height:32px; border-radius:40px; border:1px solid #cbd5e1; background:#f8fafc; cursor:pointer;">-5</button>
+                                <input type="number" id="collectDuration" min="1" max="300" step="1" value="30" style="width:80px; text-align:center; border:1px solid #cbd5e1; border-radius:40px; padding:8px;">
+                                <button id="durationPlusBtn" style="width:32px; height:32px; border-radius:40px; border:1px solid #cbd5e1; background:#f8fafc; cursor:pointer;">+5</button>
+                                <span>秒</span>
+                            </div>
+                        </div>
+                        <div class="num-input-group" style="margin-bottom:16px;">
+                            <label>📷 采样帧率</label>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <button id="fpsMinusBtn" style="width:32px; height:32px; border-radius:40px; border:1px solid #cbd5e1; background:#f8fafc; cursor:pointer;">-5</button>
+                                <input type="number" id="sampleFps" min="1" max="60" step="1" value="10" style="width:80px; text-align:center; border:1px solid #cbd5e1; border-radius:40px; padding:8px;">
+                                <button id="fpsPlusBtn" style="width:32px; height:32px; border-radius:40px; border:1px solid #cbd5e1; background:#f8fafc; cursor:pointer;">+5</button>
+                                <span>帧</span>
+                            </div>
+                        </div>
+                        <div class="num-input-group" style="background:#eef4ff;">
+                            <label>📊 总帧数</label>
+                            <div style="display:flex; align-items:center;">
+                                <input type="text" id="totalFrames" readonly value="300" style="width:100px; text-align:center; background:#eef4ff; border:1px solid #cbd5e1; border-radius:40px; padding:8px; font-weight:600;">
+                                <span style="margin-left:8px;">帧</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="right-col">
+                    <div class="preview-area">
+                        <div class="weather-preview">
+                            <div class="weather-icon" id="weatherIcon">☀️</div>
+                            <div style="font-size:26px; font-weight:700;" id="weatherName">ClearNoon</div>
+                            <button class="btn-generate" id="generateBtn">🚁 生成数据集</button>
+                        </div>
+                    </div>
+                    <div class="status-bar" id="statusBar">🌱 官方预设 · Town10HD · 交通流</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===============PAGE: 数据资产=================== -->
+        <!-- =========================PAGE: 地图预览与路线规划========================= -->
+        <div id="page-route-planning" class="page-container">
+            <div class="route-page-header">
+                <div>
+                    <div class="route-page-kicker">ROUTE WORKSPACE</div>
+                    <h1>地图预览与自定义路线</h1>
+                    <p>选择地图查看道路拓扑，点击地图规划并保存自定义航线，一键启动自动巡航。</p>
+                </div>
+                <div class="route-page-state">预览数据未加载</div>
+            </div>
+
+            <div class="route-planning-layout">
+                <section class="route-map-panel" aria-label="地图预览">
+                    <div class="route-panel-header">
+                        <div>
+                            <div class="route-panel-title">地图预览</div>
+                            <div class="route-panel-caption">道路拓扑、起飞点和路线将在这里显示（滚轮缩放 · 按住拖动平移）</div>
+                        </div>
+                        <div class="route-tool-row" aria-label="地图工具">
+                            <button class="route-tool-button" id="routeLoadMapBtn" type="button">读取地图</button>
+                            <button class="route-tool-button" id="routeUndoBtn" type="button">撤销</button>
+                            <button class="route-tool-button" id="routeClearBtn" type="button">清空路线</button>
+                            <button class="route-tool-button" id="routeResetViewBtn" type="button">重置视图</button>
+                        </div>
+                    </div>
+                    <div class="route-map-stage" id="routeMapPreview" role="img" aria-label="地图预览区域">
+                        <div class="route-map-badge">预览模式</div>
+                        <svg id="routeMapSvg" class="route-map-svg" role="presentation" aria-hidden="true"></svg>
+                        <div class="route-map-legend" aria-label="地图图例">
+                            <span><i class="legend-swatch legend-road"></i>道路网络</span>
+                            <span><i class="legend-swatch legend-cruise"></i>固定巡航路线</span>
+                            <span><i class="legend-marker legend-start"></i>计划起点</span>
+                        </div>
+                        <div class="route-map-empty" id="routeMapEmpty">
+                            <div class="route-map-empty-inner">
+                                <div class="route-map-empty-title" id="routeMapEmptyTitle">等待地图数据</div>
+                                <div class="route-map-empty-text" id="routeMapEmptyText">点击“读取地图”后，这里将显示固定的 CARLA 道路拓扑。</div>
+                            </div>
+                        </div>
+                        <div class="route-map-coordinates" id="routeMapCoordinates">X: -- &nbsp; Y: -- &nbsp; Z: --</div>
+                    </div>
+                </section>
+
+                <aside class="route-editor-stack" aria-label="路线编辑设置">
+                    <section class="route-editor-panel">
+                        <div class="route-panel-title">路线设置</div>
+                        <select id="routeMapSelect" class="select-dropdown" aria-label="路线地图">
+                            <option>Town01</option>
+                            <option>Town02</option>
+                            <option>Town03</option>
+                            <option>Town04</option>
+                            <option>Town05</option>
+                            <option selected>Town10HD</option>
+                            <option>Town01_Opt</option>
+                            <option>Town02_Opt</option>
+                            <option>Town03_Opt</option>
+                            <option>Town04_Opt</option>
+                            <option>Town05_Opt</option>
+                            <option>Town10HD_Opt</option>
+                            <option>AirSimAssets</option>
+                            <option>AnnotationColorLandscape</option>
+                        </select>
+                        <div class="route-mode-switch" aria-label="路线模式">
+                            <button class="route-mode-option active" id="routeModeFixedBtn" type="button">固定航线</button>
+                            <button class="route-mode-option" id="routeModeCustomBtn" type="button">自定义路线</button>
+                        </div>
+                        <div class="route-editor-field">
+                            <label for="routeCruiseAltitude">巡航高度 (m)</label>
+                            <input id="routeCruiseAltitude" type="number" value="45" min="10" max="200">
+                        </div>
+                        <div class="route-editor-field">
+                            <label for="routeCruiseSpeed">巡航速度 (m/s)</label>
+                            <input id="routeCruiseSpeed" type="number" value="8" min="1" max="30" step="0.5">
+                        </div>
+                        <div class="route-editor-field">
+                            <label for="routePointSpacing">航点间距 (m)</label>
+                            <input id="routePointSpacing" type="number" value="8" min="1" max="50" disabled>
+                        </div>
+                    </section>
+
+                    <section class="route-editor-panel">
+                        <div class="route-panel-title">航点列表</div>
+                        <div class="route-point-list" id="routePointList">尚未创建航点。点击地图添加起点 / 途经点 / 终点。</div>
+                        <button class="route-tool-button" id="routeSaveBtn" type="button" style="width:100%; margin-top:10px;">💾 保存自定义路线</button>
+                    </section>
+
+                    <section class="route-editor-panel">
+                        <div class="route-panel-title">自动巡航</div>
+                        <div style="display:flex; flex-direction:column; gap:8px; padding:0 4px;">
+                            <button class="btn-primary" id="routeCruiseStartBtn" type="button" style="width:100%; padding:10px 0; font-size:13px; font-weight:600;">✈️ 开始自动巡航</button>
+                            <div style="display:flex; gap:8px;">
+                                <button class="route-tool-button" id="routeCruisePauseBtn" type="button" style="flex:1; cursor:pointer;">⏸️ 暂停</button>
+                                <button class="route-tool-button" id="routeCruiseLandBtn" type="button" style="flex:1; cursor:pointer;">🛬 降落</button>
+                            </div>
+                            <div id="routeCruiseStatus" style="font-size:11px; color:#64748b; line-height:1.5;">将执行当前地图的固定航线</div>
+                        </div>
+                    </section>
+
+                    <section class="route-status-panel" aria-label="路线状态">
+                        <div class="route-panel-title" style="margin-bottom:6px;">任务状态</div>
+                        <div class="route-status-row"><span>当前地图</span><strong id="routeCurrentMap">Town10HD</strong></div>
+                        <div class="route-status-row"><span>道路车道线</span><strong id="routeRoadCount">0</strong></div>
+                        <div class="route-status-row"><span>巡航航点</span><strong id="routeWaypointCount">--</strong></div>
+                        <div class="route-status-row"><span>坐标对齐</span><strong id="routeAlignmentStatus">待读取</strong></div>
+                        <div class="route-status-row"><span>路线状态</span><strong id="routeSaveStatus">未保存</strong></div>
+                        <div class="route-status-row"><span>巡航状态</span><strong id="routeCruiseState">未启动</strong></div>
+                        <div class="route-status-row"><span>无人机位置</span><strong id="routeDronePosition">--</strong></div>
+                        <div class="route-status-row"><span>路径进度</span><strong id="routePathProgress">--</strong></div>
+                    </section>
+                </aside>
+            </div>
+        </div>
+
+        <div id="page-assets" class="page-container">
+            <div class="right-panel" style="height:auto; min-height:600px;">
+                <div class="panel-header">
+                    📦 数据集资产库
+                    <button id="clearDatasetsBtn" style="background:none; border:none; cursor:pointer; font-size:12px; color:#ef4444;">清空</button>
+                </div>
+                <div class="dataset-list" id="datasetList">
+                    <div style="text-align:center;color:#8da0bc;padding:32px 20px;">✨ 生成后显示记录</div>
+                </div>
+                <div class="output-section">
+                    <div style="margin-top:0; padding-top:0; border-top:none;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                            <span style="font-size:12px; font-weight:600;">📁 数据集保存位置</span>
+                            <button id="selectSavePathBtn" class="btn-primary" style="font-size:11px;">选择文件夹</button>
+                        </div>
+                        <div id="savePathDisplay" style="background:#f1f5f9; border-radius:16px; padding:8px 12px; font-size:11px; color:#64748b; word-break:break-all; font-family:monospace;">📂 默认: ./datasets/</div>
+                        <div style="margin-top:6px; font-size:10px; color:#94a3b8;">💡 生成的数据集将保存到此位置</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================PAGE: 问题跟踪======================= -->
+        <div id="page-issues" class="page-container">
+            <div class="generic-card">
+                <div class="section-title"><span>📋 开发问题跟踪</span></div>
+                <div id="issueList" style="display:flex; flex-direction:column; gap:12px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

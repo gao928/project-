@@ -1,0 +1,4 @@
+flask>=2.0.0
+flask-cors>=3.0.0
+
+# 请确保在使用了carlaAir的环境设置脚本后安装

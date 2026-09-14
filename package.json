@@ -1,0 +1,71 @@
+{
+    "name": "drone-dataset-platform",
+    "version": "1.0.1",
+    "description": "无人机数据集生成平台",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "build:dir": "electron-builder --dir",
+        "dist": "electron-builder --win --x64"
+    },
+    "devDependencies": {
+        "electron": "^28.3.3",
+        "electron-builder": "^24.13.3"
+    },
+    "build": {
+        "appId": "com.dronedataset.platform",
+        "productName": "Drone Dataset Platform",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "main.js",
+            "preload.js",
+            "index.html",
+            "app.js",
+            "core.js",
+            "api.js",
+            "sensors.js",
+            "weather.js",
+            "datasets.js",
+            "simulator.js",
+            "traffic.js",
+            "route.js",
+            "route-planning.js",
+            "issues.js",
+            "issues.json",
+            "map_offsets.json"
+        ],
+        "extraResources": [
+            {
+                "from": "sensor_manager.py",
+                "to": "sensor_manager.py"
+            },
+            {
+                "from": "road_cruise.py",
+                "to": "road_cruise.py"
+            },
+            {
+                "from": "custom_route.py",
+                "to": "custom_route.py"
+            },
+            {
+                "from": "map_offsets.json",
+                "to": "map_offsets.json"
+            },
+            {
+                "from": "backend.py",
+                "to": "backend.py"
+            }
+        ],
+        "win": {
+            "target": "nsis",
+            "icon": "build/icon.ico"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true
+        }
+    }
+}

@@ -1,22 +1,29 @@
-### AL ###
-#Template for AL projects for Dynamics 365 Business Central
-#launch.json folder
-.vscode/
-#Cache folder
-.alcache/
-#Symbols folder
-.alpackages/
-#Snapshots folder
-.snapshots/
-#Testing Output folder
-.output/
-#Extension App-file
-*.app
-#Rapid Application Development File
-rad.json
-#Translation Base-file
-*.g.xlf
-#License-file
-*.flf
-#Test results file
-TestResults.xml
+# ================= 依赖与虚拟环境（体积大，不要提交）=================
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+
+# ================= 运行产物 =================
+# 采集到的数据集（默认输出目录）
+datasets/
+
+# electron-builder 打包输出
+dist/
+
+# ================= 其他 =================
+*.log
+_ui_preview.png
+
+# 临时调试/验证脚本与运行期状态（下划线开头的都是临时产物，不要提交）
+_*.py
+_*.js
+_*.ps1
+_*.txt
+.carla_last_map
+
+# 注意：recordings/ 一定要提交（约 3MB）
+# 里面是各张地图的道路拓扑缓存 + 已标定的固定巡航航线，
+# 没有它，队友不启动 Carla-Air 也看不到"地图与路线"页的预览。
